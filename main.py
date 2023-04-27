@@ -34,7 +34,10 @@ def echo(update, context):
     return ECHO
 
 
-def handle_users_reply(update, context):
+def handle_select(update, context):
+    if update.callback_query.data == "back":
+        return start(update, context)
+
     url_products = 'https://useast.api.elasticpath.com/pcm/products?include=main_image'
     price_book_id = os.environ.get('PRICE_BOOK_ID')
     url_prices = f'https://useast.api.elasticpath.com/pcm/pricebooks/{price_book_id}/prices'
@@ -64,9 +67,15 @@ def handle_users_reply(update, context):
         'image.png'
     )
 
+    keyboard = [
+        [InlineKeyboardButton('back', callback_data='back')]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     context.bot.send_photo(
         chat_id=update.effective_chat.id,
         photo=open('image.png', 'rb'),
+        reply_markup=reply_markup,
         caption=message
     )
 
@@ -77,7 +86,7 @@ def main():
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
+    dispatcher.add_handler(CallbackQueryHandler(handle_select))
     dispatcher.add_handler(MessageHandler(Filters.text, echo))
 
     updater.start_polling()
