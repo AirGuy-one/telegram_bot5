@@ -19,7 +19,8 @@ def start(update, context):
     keyboard = [
         [InlineKeyboardButton(product['attributes']['name'],
                               callback_data=str(index)) for index, product in enumerate(products)
-         ]
+         ],
+        [InlineKeyboardButton('cart', callback_data='cart')],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -34,33 +35,40 @@ def echo(update, context):
     return ECHO
 
 
-def handle_select(update, context):
-    if update.callback_query.data == "back":
-        return start(update, context)
-
-    url_products = 'https://useast.api.elasticpath.com/pcm/products?include=main_image'
+def handle_menu(update, context):
     price_book_id = os.environ.get('PRICE_BOOK_ID')
+    url_products = 'https://useast.api.elasticpath.com/pcm/products?include=main_image'
     url_prices = f'https://useast.api.elasticpath.com/pcm/pricebooks/{price_book_id}/prices'
+    url_on_stock = 'https://useast.api.elasticpath.com/v2/inventories/multiple'
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}'
+        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Content-Type': 'application/json'
     }
-    response = requests.get(url_products, headers=headers).json()
+    products_response = requests.get(url_products, headers=headers).json()
 
-    products = response['data']
+    products = products_response['data']
     prices = requests.get(url_prices, headers=headers).json()['data']
-    images = response['included']
+    images = products_response['included']
 
     product_index = int(update.callback_query.data)
 
     product = products[product_index]
     price = str(prices[product_index]['attributes']['currencies']['USD']['amount'])
+    on_stock_data = {
+        'data': [
+            {
+                'id': product['id']
+            }
+        ]
+    }
+    quantity_on_stock = requests.post(url_on_stock, headers=headers, json=on_stock_data).json()['data'][0]['available']
 
     image_href = images['main_images'][product_index]['link']['href']
 
     name = product['attributes']['name']
     description = product['attributes']['description']
 
-    message = f"{name}\n\n{price[:-2]}.{price[-2:]} per kg\n\n{description}"
+    message = f"{name}\n\n{price[:-2]}.{price[-2:]} per kg\n{quantity_on_stock}kg on stock\n\n{description}"
 
     urllib.request.urlretrieve(
         image_href,
@@ -68,6 +76,12 @@ def handle_select(update, context):
     )
 
     keyboard = [
+        [
+            InlineKeyboardButton('1 kg', callback_data=f"1::{product['id']}"),
+            InlineKeyboardButton('5 kg', callback_data=f"5::{product['id']}"),
+            InlineKeyboardButton('10 kg', callback_data=f"10::{product['id']}")
+        ],
+        [InlineKeyboardButton('cart', callback_data='cart')],
         [InlineKeyboardButton('back', callback_data='back')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -80,13 +94,63 @@ def handle_select(update, context):
     )
 
 
+def handle_back(update, context):
+    return start(update, context)
+
+
+def handle_add_product_to_cart(update, context):
+    cart_id = os.environ.get('CART_ID')
+    url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
+    headers = {
+        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Content-Type': 'application/json'
+    }
+    data = {
+        "data": {
+            "id": update.callback_query.data.split('::')[1],
+            "type": "cart_item",
+            "quantity": int(update.callback_query.data.split('::')[0]),
+        }
+    }
+    requests.post(url, headers=headers, json=data)
+
+
+def handle_cart(update, context):
+    cart_id = '48353b61-fe15-43cf-b074-ed0d34928ce4'
+    url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
+
+    headers = {
+        "Authorization": f"Bearer {os.environ.get('BEARER')}",
+    }
+
+    response = requests.get(url, headers=headers).json()
+
+    cart_items = response['data']
+    message = ''
+    for cart_item in cart_items:
+        price = cart_item['meta']['display_price']['without_tax']['unit']
+        amount = cart_item['meta']['display_price']['without_tax']['value']
+        kg_quantity = amount['amount'] / price['amount']
+        message += f"{cart_item['name']}\n" \
+                   f"{cart_item['description']}\n" \
+                   f"{price['formatted']} per kg\n" \
+                   f"{kg_quantity}kg in cart for {amount['formatted']}\n\n"
+
+    message += f"Total: {response['meta']['display_price']['without_tax']['formatted']}"
+
+    context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+
+
 def main():
     token = os.environ.get("TELEGRAM_TOKEN")
     updater = Updater(token)
     dispatcher = updater.dispatcher
 
     dispatcher.add_handler(CommandHandler('start', start))
-    dispatcher.add_handler(CallbackQueryHandler(handle_select))
+    dispatcher.add_handler(CallbackQueryHandler(handle_back, pattern='back'))
+    dispatcher.add_handler(CallbackQueryHandler(handle_cart, pattern='cart'))
+    dispatcher.add_handler(CallbackQueryHandler(handle_add_product_to_cart, pattern=r"^\d*::.*$"))
+    dispatcher.add_handler(CallbackQueryHandler(handle_menu))
     dispatcher.add_handler(MessageHandler(Filters.text, echo))
 
     updater.start_polling()
