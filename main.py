@@ -6,8 +6,6 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from dotenv import load_dotenv
 
-START, ECHO = range(2)
-
 
 def start(update, context):
     url = 'https://useast.api.elasticpath.com/pcm/products'
@@ -27,12 +25,12 @@ def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Please select a product:",
                              reply_markup=reply_markup)
-    return ECHO
+    return 1
 
 
 def echo(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id, text=update.message.text)
-    return ECHO
+    return 1
 
 
 def handle_menu(update, context):
@@ -140,9 +138,9 @@ def handle_cart(update, context):
 
     keyboard = [
         [InlineKeyboardButton(f'Remove from the cart the {cart_item["name"]}',
-                              callback_data=f'rm::{cart_item["id"]}')] for cart_item in cart_items
-    ]
+                              callback_data=f'rm::{cart_item["id"]}')] for cart_item in cart_items]
     keyboard.append([InlineKeyboardButton('Back to the menu', callback_data='back')])
+    keyboard.append([InlineKeyboardButton('Pay for it', callback_data='pay')])
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -164,6 +162,17 @@ def handle_remove_product_from_cart(update, context):
     handle_cart(update, context)
 
 
+def handle_payment(update, context):
+    context.bot.send_message(chat_id=update.effective_chat.id, text="Please enter your email address:")
+
+
+def payment_message(update, context):
+    user_email = update.message.text
+    message = f"Your email is: {user_email}"
+    context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+    return 1
+
+
 def main():
     token = os.environ.get("TELEGRAM_TOKEN")
     updater = Updater(token)
@@ -172,10 +181,11 @@ def main():
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CallbackQueryHandler(handle_back, pattern='back'))
     dispatcher.add_handler(CallbackQueryHandler(handle_cart, pattern='cart'))
+    dispatcher.add_handler(CallbackQueryHandler(handle_payment, pattern='pay'))
     dispatcher.add_handler(CallbackQueryHandler(handle_add_product_to_cart, pattern=r"^\d*::.*$"))
     dispatcher.add_handler(CallbackQueryHandler(handle_remove_product_from_cart, pattern=r"^rm::.+$"))
     dispatcher.add_handler(CallbackQueryHandler(handle_menu))
-    dispatcher.add_handler(MessageHandler(Filters.text, echo))
+    dispatcher.add_handler(MessageHandler(Filters.text, payment_message))
 
     updater.start_polling()
 
