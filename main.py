@@ -1,6 +1,7 @@
 import os
 import requests
 import urllib.request
+import json
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
@@ -167,7 +168,23 @@ def handle_payment(update, context):
 
 
 def payment_message(update, context):
+    url = 'https://useast.api.elasticpath.com/v2/customers'
+    headers = {
+        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Content-Type': 'application/json'
+    }
     user_email = update.message.text
+    data = {
+        'data':
+            {
+                "type": "customer",
+                "name": "First user",
+                "email": user_email
+            }
+    }
+
+    requests.post(url, headers=headers, data=json.dumps(data))
+
     message = f"Your email is: {user_email}"
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
     return 1
