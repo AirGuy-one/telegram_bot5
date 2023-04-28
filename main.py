@@ -20,12 +20,12 @@ def start(update, context):
         [InlineKeyboardButton(product['attributes']['name'],
                               callback_data=str(index)) for index, product in enumerate(products)
          ],
-        [InlineKeyboardButton('cart', callback_data='cart')],
+        [InlineKeyboardButton('Cart', callback_data='cart')],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     context.bot.send_message(chat_id=update.effective_chat.id,
-                             text="Please select an option:",
+                             text="Please select a product:",
                              reply_markup=reply_markup)
     return ECHO
 
@@ -81,8 +81,8 @@ def handle_menu(update, context):
             InlineKeyboardButton('5 kg', callback_data=f"5::{product['id']}"),
             InlineKeyboardButton('10 kg', callback_data=f"10::{product['id']}")
         ],
-        [InlineKeyboardButton('cart', callback_data='cart')],
-        [InlineKeyboardButton('back', callback_data='back')]
+        [InlineKeyboardButton('Cart', callback_data='cart')],
+        [InlineKeyboardButton('Back to the menu', callback_data='back')]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -116,7 +116,7 @@ def handle_add_product_to_cart(update, context):
 
 
 def handle_cart(update, context):
-    cart_id = '48353b61-fe15-43cf-b074-ed0d34928ce4'
+    cart_id = os.environ.get('CART_ID')
     url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
 
     headers = {
@@ -130,7 +130,7 @@ def handle_cart(update, context):
     for cart_item in cart_items:
         price = cart_item['meta']['display_price']['without_tax']['unit']
         amount = cart_item['meta']['display_price']['without_tax']['value']
-        kg_quantity = amount['amount'] / price['amount']
+        kg_quantity = int(amount['amount'] / price['amount'])
         message += f"{cart_item['name']}\n" \
                    f"{cart_item['description']}\n" \
                    f"{price['formatted']} per kg\n" \
@@ -138,7 +138,30 @@ def handle_cart(update, context):
 
     message += f"Total: {response['meta']['display_price']['without_tax']['formatted']}"
 
-    context.bot.send_message(chat_id=update.effective_chat.id, text=message)
+    keyboard = [
+        [InlineKeyboardButton(f'Remove from the cart the {cart_item["name"]}',
+                              callback_data=f'rm::{cart_item["id"]}')] for cart_item in cart_items
+    ]
+    keyboard.append([InlineKeyboardButton('Back to the menu', callback_data='back')])
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=message,
+        reply_markup=reply_markup
+    )
+
+
+def handle_remove_product_from_cart(update, context):
+    cart_id = os.environ.get('CART_ID')
+    cart_item_id = update.callback_query.data.split("::")[1]
+    url = f'https://useast.api.elasticpath.com/v2/carts/{cart_id}/items/{cart_item_id}'
+    headers = {
+        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+    }
+    requests.delete(url, headers=headers)
+    handle_cart(update, context)
 
 
 def main():
@@ -150,6 +173,7 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(handle_back, pattern='back'))
     dispatcher.add_handler(CallbackQueryHandler(handle_cart, pattern='cart'))
     dispatcher.add_handler(CallbackQueryHandler(handle_add_product_to_cart, pattern=r"^\d*::.*$"))
+    dispatcher.add_handler(CallbackQueryHandler(handle_remove_product_from_cart, pattern=r"^rm::.+$"))
     dispatcher.add_handler(CallbackQueryHandler(handle_menu))
     dispatcher.add_handler(MessageHandler(Filters.text, echo))
 
