@@ -20,8 +20,11 @@ def get_headers(condition):
         }
 
 
-def get_api_request_json(url):
-    return requests.get(url, headers=get_headers('get'))
+def get_api_request_json(url, params=None):
+    if params:
+        return requests.get(url, headers=get_headers('get'), params=params)
+    else:
+        return requests.get(url, headers=get_headers('get'))
 
 
 def post_api_request(url, json):
@@ -55,10 +58,13 @@ def start(update, context):
 
 def handle_menu(update, context):
     price_book_id = os.environ.get('PRICE_BOOK_ID')
-    url_products = 'https://useast.api.elasticpath.com/pcm/products?include=main_image'
+    url_products_params = {
+        'include': 'main_image'
+    }
+    url_products = 'https://useast.api.elasticpath.com/pcm/products'
     url_prices = f'https://useast.api.elasticpath.com/pcm/pricebooks/{price_book_id}/prices'
     url_on_stock = 'https://useast.api.elasticpath.com/v2/inventories/multiple'
-    products_response = get_api_request_json(url_products)
+    products_response = get_api_request_json(url_products, url_products_params)
     prices_response = get_api_request_json(url_prices)
 
     if products_response.status_code == 200:
