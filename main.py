@@ -1,7 +1,7 @@
 import os
 import requests
 import urllib.request
-import json
+import urllib.error
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
@@ -99,10 +99,12 @@ def handle_menu(update, context):
 
     message = f"{name}\n\n{price[:-2]}.{price[-2:]} per kg\n{quantity_on_stock}kg on stock\n\n{description}"
 
-    urllib.request.urlretrieve(
-        image_href,
-        'image.png'
-    )
+    try:
+        urllib.request.urlretrieve(image_href, 'image.png')
+    except urllib.error.HTTPError as e:
+        print(f"HTTP Error: {e.code} - {e.reason}")
+    except urllib.error.URLError as e:
+        print(f"Network Error: {e.reason}")
 
     keyboard = [
         [
@@ -115,9 +117,12 @@ def handle_menu(update, context):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    with open('image.png', 'rb') as f:
+        photo = f.read()
+
     context.bot.send_photo(
         chat_id=update.effective_chat.id,
-        photo=open('image.png', 'rb'),
+        photo=photo,
         reply_markup=reply_markup,
         caption=message
     )
