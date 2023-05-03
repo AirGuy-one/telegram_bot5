@@ -29,11 +29,6 @@ def start(update, context):
     return 1
 
 
-def echo(update, context):
-    context.bot.send_message(chat_id=update.effective_chat.id, text=update.message.text)
-    return 1
-
-
 def handle_menu(update, context):
     price_book_id = os.environ.get('PRICE_BOOK_ID')
     url_products = 'https://useast.api.elasticpath.com/pcm/products?include=main_image'
