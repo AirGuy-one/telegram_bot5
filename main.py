@@ -8,12 +8,29 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from dotenv import load_dotenv
 
 
+def get_headers(condition):
+    if condition == 'get':
+        return {
+            'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        }
+    else:
+        return {
+            'Authorization': f'Bearer {os.environ.get("BEARER")}',
+            'Content-Type': 'application/json'
+        }
+
+
+def get_api_request_json(url):
+    return requests.get(url, headers=get_headers('get')).json()
+
+
+def post_api_request(url, json):
+    return requests.post(url, headers=get_headers('post'), json=json)
+
+
 def start(update, context):
     url = 'https://useast.api.elasticpath.com/pcm/products'
-    headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}'
-    }
-    products = requests.get(url, headers=headers).json()['data']
+    products = get_api_request_json(url)['data']
 
     keyboard = [
         [InlineKeyboardButton(product['attributes']['name'],
@@ -38,10 +55,10 @@ def handle_menu(update, context):
         'Authorization': f'Bearer {os.environ.get("BEARER")}',
         'Content-Type': 'application/json'
     }
-    products_response = requests.get(url_products, headers=headers).json()
+    products_response = get_api_request_json(url_products)
 
     products = products_response['data']
-    prices = requests.get(url_prices, headers=headers).json()['data']
+    prices = get_api_request_json(url_prices)['data']
     images = products_response['included']
 
     product_index = int(update.callback_query.data)
@@ -55,7 +72,7 @@ def handle_menu(update, context):
             }
         ]
     }
-    quantity_on_stock = requests.post(url_on_stock, headers=headers, json=on_stock_data).json()['data'][0]['available']
+    quantity_on_stock = post_api_request(url_on_stock, on_stock_data).json()['data'][0]['available']
 
     image_href = images['main_images'][product_index]['link']['href']
 
@@ -106,7 +123,7 @@ def handle_add_product_to_cart(update, context):
             "quantity": int(update.callback_query.data.split('::')[0]),
         }
     }
-    requests.post(url, headers=headers, json=data)
+    post_api_request(url, data)
 
 
 def handle_cart(update, context):
@@ -117,7 +134,7 @@ def handle_cart(update, context):
         "Authorization": f"Bearer {os.environ.get('BEARER')}",
     }
 
-    response = requests.get(url, headers=headers).json()
+    response = get_api_request_json(url)
 
     cart_items = response['data']
     message = ''
@@ -178,7 +195,7 @@ def payment_message(update, context):
             }
     }
 
-    requests.post(url, headers=headers, data=json.dumps(data))
+    post_api_request(url, data)
 
     message = f"Your email is: {user_email}"
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
