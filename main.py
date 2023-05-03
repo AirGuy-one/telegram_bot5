@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 
 
 def get_headers(condition):
-    if condition == 'get':
+    if condition == 'get' or condition == 'remove':
         return {
             'Authorization': f'Bearer {os.environ.get("BEARER")}',
         }
@@ -26,6 +26,10 @@ def get_api_request_json(url):
 
 def post_api_request(url, json):
     return requests.post(url, headers=get_headers('post'), json=json)
+
+
+def remove_product_request(url):
+    requests.delete(url, headers=get_headers('remove'))
 
 
 def start(update, context):
@@ -55,10 +59,6 @@ def handle_menu(update, context):
     url_products = 'https://useast.api.elasticpath.com/pcm/products?include=main_image'
     url_prices = f'https://useast.api.elasticpath.com/pcm/pricebooks/{price_book_id}/prices'
     url_on_stock = 'https://useast.api.elasticpath.com/v2/inventories/multiple'
-    headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
-        'Content-Type': 'application/json'
-    }
     products_response = get_api_request_json(url_products)
     prices_response = get_api_request_json(url_prices)
 
@@ -125,10 +125,6 @@ def handle_back(update, context):
 def handle_add_product_to_cart(update, context):
     cart_id = os.environ.get('CART_ID')
     url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
-    headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
-        'Content-Type': 'application/json'
-    }
     data = {
         "data": {
             "id": update.callback_query.data.split('::')[1],
@@ -142,10 +138,6 @@ def handle_add_product_to_cart(update, context):
 def handle_cart(update, context):
     cart_id = os.environ.get('CART_ID')
     url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
-
-    headers = {
-        "Authorization": f"Bearer {os.environ.get('BEARER')}",
-    }
 
     response = get_api_request_json(url)
 
@@ -185,10 +177,7 @@ def handle_remove_product_from_cart(update, context):
     cart_id = os.environ.get('CART_ID')
     cart_item_id = update.callback_query.data.split("::")[1]
     url = f'https://useast.api.elasticpath.com/v2/carts/{cart_id}/items/{cart_item_id}'
-    headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
-    }
-    requests.delete(url, headers=headers)
+    remove_product_request(url)
     handle_cart(update, context)
 
 
@@ -198,10 +187,6 @@ def handle_payment(update, context):
 
 def payment_message(update, context):
     url = 'https://useast.api.elasticpath.com/v2/customers'
-    headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
-        'Content-Type': 'application/json'
-    }
     user_email = update.message.text
     data = {
         'data':
