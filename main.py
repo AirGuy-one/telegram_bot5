@@ -21,7 +21,7 @@ def get_headers(condition):
 
 
 def get_api_request_json(url):
-    return requests.get(url, headers=get_headers('get')).json()
+    return requests.get(url, headers=get_headers('get'))
 
 
 def post_api_request(url, json):
@@ -30,7 +30,11 @@ def post_api_request(url, json):
 
 def start(update, context):
     url = 'https://useast.api.elasticpath.com/pcm/products'
-    products = get_api_request_json(url)['data']
+    response = get_api_request_json(url)
+    if response.status_code == 200:
+        products = response.json()['data']
+    else:
+        products = []
 
     keyboard = [
         [InlineKeyboardButton(product['attributes']['name'],
@@ -56,10 +60,19 @@ def handle_menu(update, context):
         'Content-Type': 'application/json'
     }
     products_response = get_api_request_json(url_products)
+    prices_response = get_api_request_json(url_prices)
 
-    products = products_response['data']
-    prices = get_api_request_json(url_prices)['data']
-    images = products_response['included']
+    if products_response.status_code == 200:
+        products = products_response.json()['data']
+        images = products_response.json()['included']
+    else:
+        products = []
+        images = {}
+
+    if prices_response.status_code == 200:
+        prices = prices_response.json()['data']
+    else:
+        prices = []
 
     product_index = int(update.callback_query.data)
 
@@ -136,7 +149,11 @@ def handle_cart(update, context):
 
     response = get_api_request_json(url)
 
-    cart_items = response['data']
+    if response.status_code == 200:
+        cart_items = response.json()['data']
+    else:
+        cart_items = []
+
     message = ''
     for cart_item in cart_items:
         price = cart_item['meta']['display_price']['without_tax']['unit']
@@ -147,7 +164,7 @@ def handle_cart(update, context):
                    f"{price['formatted']} per kg\n" \
                    f"{kg_quantity}kg in cart for {amount['formatted']}\n\n"
 
-    message += f"Total: {response['meta']['display_price']['without_tax']['formatted']}"
+    message += f"Total: {response.json()['meta']['display_price']['without_tax']['formatted']}"
 
     keyboard = [
         [InlineKeyboardButton(f'Remove from the cart the {cart_item["name"]}',
