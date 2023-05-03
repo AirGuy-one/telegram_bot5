@@ -51,7 +51,6 @@ def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Please select a product:",
                              reply_markup=reply_markup)
-    return 1
 
 
 def handle_menu(update, context):
@@ -201,7 +200,6 @@ def payment_message(update, context):
 
     message = f"Your email is: {user_email}"
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
-    return 1
 
 
 def main():
