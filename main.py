@@ -90,7 +90,8 @@ def handle_menu(update, context):
             }
         ]
     }
-    quantity_on_stock = post_api_request(url_on_stock, on_stock_data).json()['data'][0]['available']
+
+    quantity_on_stock = post_api_request(url_on_stock, on_stock_data).json()['data'].pop()['available']
 
     image_href = images['main_images'][product_index]['link']['href']
 
@@ -135,11 +136,12 @@ def handle_back(update, context):
 def handle_add_product_to_cart(update, context):
     cart_id = os.environ.get('CART_ID')
     url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
+    quantity, product_id = update.callback_query.data.split('::')
     data = {
         "data": {
-            "id": update.callback_query.data.split('::')[1],
+            "id": product_id,
             "type": "cart_item",
-            "quantity": int(update.callback_query.data.split('::')[0]),
+            "quantity": int(quantity),
         }
     }
     post_api_request(url, data)
@@ -185,7 +187,7 @@ def handle_cart(update, context):
 
 def handle_remove_product_from_cart(update, context):
     cart_id = os.environ.get('CART_ID')
-    cart_item_id = update.callback_query.data.split("::")[1]
+    rm_indicator, cart_item_id = update.callback_query.data.split("::")
     url = f'https://useast.api.elasticpath.com/v2/carts/{cart_id}/items/{cart_item_id}'
     remove_product_request(url)
     handle_cart(update, context)
