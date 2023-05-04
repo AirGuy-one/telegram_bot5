@@ -10,7 +10,7 @@ Telegram bot with which we can order food
 You can install the necessary dependencies using pip:
 
 ```
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 You will also need to create a .env file in the root directory of your project and insert your Telegram and Vkontakte bot tokens:
