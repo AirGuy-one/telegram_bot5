@@ -4,6 +4,7 @@ import urllib.request
 import urllib.error
 import schedule
 import time
+import redis
 
 from token_update import get_access_token
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -137,7 +138,38 @@ def handle_back(update, context):
 
 
 def handle_add_product_to_cart(update, context):
-    cart_id = os.environ.get('CART_ID')
+    user_id = update.effective_user.id
+    r = redis.Redis(
+        host=os.environ.get('DATABASE_HOST'),
+        port=int(os.environ.get('DATABASE_PORT')),
+        password=os.environ.get('DATABASE_PASSWORD'),
+        db=0
+    )
+
+    # Binding telegram_id to the cart_id in redis
+    if r.exists(f"cart:{user_id}"):
+        cart_id = r.get(f"cart:{user_id}").decode('utf-8')
+    else:
+        url = "https://useast.api.elasticpath.com/v2/carts"
+        payload = {
+            "data": {
+                "name": f"Cart of user with {user_id} id",
+                "description": "For Holidays",
+                "discount_settings": {
+                    "custom_discounts_enabled": True
+                }
+            }
+        }
+        cart_id = post_api_request(url, payload).json()['data']['id'].decode('utf-8')
+        r.set(f"cart:{user_id}", cart_id)
+        with open('.env', 'r') as file:
+            lines = file.readlines()
+        with open('.env', 'w') as file:
+            for line in lines:
+                if line.startswith('CART_ID='):
+                    line = f'CART_ID={cart_id}\n'
+                file.write(line)
+
     url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
     quantity, product_id = update.callback_query.data.split('::')
     data = {
@@ -167,11 +199,11 @@ def handle_cart(update, context):
         amount = cart_item['meta']['display_price']['without_tax']['value']
         kg_quantity = int(amount['amount'] / price['amount'])
         message += f"""{cart_item['name']}
-        {cart_item['description']}
-        {price['formatted']} per kg
-        {kg_quantity}kg in cart for {amount['formatted']}
+{cart_item['description']}
+{price['formatted']} per kg
+{kg_quantity}kg in cart for {amount['formatted']}
 
-        """
+"""
 
     message += f"Total: {response.json()['meta']['display_price']['without_tax']['formatted']}"
 
