@@ -2,7 +2,10 @@ import os
 import requests
 import urllib.request
 import urllib.error
+import schedule
+import time
 
+from token_update import get_access_token
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from dotenv import load_dotenv
@@ -232,6 +235,12 @@ def main():
     dispatcher.add_handler(MessageHandler(Filters.text, payment_message))
 
     updater.start_polling()
+
+    schedule.every(60).minutes.do(get_access_token)
+
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
 
 
 if __name__ == '__main__':
