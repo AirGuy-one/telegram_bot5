@@ -163,10 +163,12 @@ def handle_cart(update, context):
         price = cart_item['meta']['display_price']['without_tax']['unit']
         amount = cart_item['meta']['display_price']['without_tax']['value']
         kg_quantity = int(amount['amount'] / price['amount'])
-        message += f"{cart_item['name']}\n" \
-                   f"{cart_item['description']}\n" \
-                   f"{price['formatted']} per kg\n" \
-                   f"{kg_quantity}kg in cart for {amount['formatted']}\n\n"
+        message += f"""{cart_item['name']}
+        {cart_item['description']}
+        {price['formatted']} per kg
+        {kg_quantity}kg in cart for {amount['formatted']}
+
+        """
 
     message += f"Total: {response.json()['meta']['display_price']['without_tax']['formatted']}"
 
