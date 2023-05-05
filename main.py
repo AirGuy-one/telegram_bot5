@@ -1,5 +1,4 @@
 import os
-import requests
 import urllib.request
 import urllib.error
 import schedule
@@ -10,46 +9,14 @@ from token_update import get_access_token
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackQueryHandler
 from dotenv import load_dotenv
-
-
-def get_headers(condition):
-    if condition == 'get' or condition == 'remove':
-        return {
-            'Authorization': f'Bearer {os.environ.get("BEARER")}',
-        }
-    else:
-        return {
-            'Authorization': f'Bearer {os.environ.get("BEARER")}',
-            'Content-Type': 'application/json'
-        }
-
-
-def get_api_request_json(url, params=None):
-    if params:
-        return requests.get(url, headers=get_headers('get'), params=params)
-    else:
-        return requests.get(url, headers=get_headers('get'))
-
-
-def post_api_request(url, json):
-    return requests.post(url, headers=get_headers('post'), json=json)
-
-
-def remove_product_request(url):
-    requests.delete(url, headers=get_headers('remove'))
+from api_requests import get_products, get_products_with_images, get_prices, get_product_quantity_on_stock, \
+    get_cart_items_and_total_sum, create_cart, add_product_to_cart, push_customer_data, remove_product
 
 
 def start(update, context):
-    url = 'https://useast.api.elasticpath.com/pcm/products'
-    response = get_api_request_json(url)
-    if response.status_code == 200:
-        products = response.json()['data']
-    else:
-        products = []
-
     keyboard = [
         [InlineKeyboardButton(product['attributes']['name'],
-                              callback_data=str(index)) for index, product in enumerate(products)
+                              callback_data=str(index)) for index, product in enumerate(get_products())
          ],
         [InlineKeyboardButton('Cart', callback_data='cart')],
     ]
@@ -61,41 +28,15 @@ def start(update, context):
 
 
 def handle_menu(update, context):
-    price_book_id = os.environ.get('PRICE_BOOK_ID')
-    url_products_params = {
-        'include': 'main_image'
-    }
-    url_products = 'https://useast.api.elasticpath.com/pcm/products'
-    url_prices = f'https://useast.api.elasticpath.com/pcm/pricebooks/{price_book_id}/prices'
-    url_on_stock = 'https://useast.api.elasticpath.com/v2/inventories/multiple'
-    products_response = get_api_request_json(url_products, url_products_params)
-    prices_response = get_api_request_json(url_prices)
-
-    if products_response.status_code == 200:
-        products = products_response.json()['data']
-        images = products_response.json()['included']
-    else:
-        products = []
-        images = {}
-
-    if prices_response.status_code == 200:
-        prices = prices_response.json()['data']
-    else:
-        prices = []
+    products, images = get_products_with_images()
+    prices = get_prices()
 
     product_index = int(update.callback_query.data)
 
     product = products[product_index]
     price = str(prices[product_index]['attributes']['currencies']['USD']['amount'])
-    on_stock_data = {
-        'data': [
-            {
-                'id': product['id']
-            }
-        ]
-    }
 
-    quantity_on_stock = post_api_request(url_on_stock, on_stock_data).json()['data'].pop()['available']
+    quantity_on_stock = get_product_quantity_on_stock(product['id'])
 
     image_href = images['main_images'][product_index]['link']['href']
 
@@ -150,17 +91,7 @@ def handle_add_product_to_cart(update, context):
     if r.exists(f"cart:{user_id}"):
         cart_id = r.get(f"cart:{user_id}").decode('utf-8')
     else:
-        url = "https://useast.api.elasticpath.com/v2/carts"
-        payload = {
-            "data": {
-                "name": f"Cart of user with {user_id} id",
-                "description": "For Holidays",
-                "discount_settings": {
-                    "custom_discounts_enabled": True
-                }
-            }
-        }
-        cart_id = post_api_request(url, payload).json()['data']['id'].decode('utf-8')
+        cart_id = create_cart(user_id)
         r.set(f"cart:{user_id}", cart_id)
         with open('.env', 'r') as file:
             lines = file.readlines()
@@ -170,28 +101,12 @@ def handle_add_product_to_cart(update, context):
                     line = f'CART_ID={cart_id}\n'
                 file.write(line)
 
-    url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
     quantity, product_id = update.callback_query.data.split('::')
-    data = {
-        "data": {
-            "id": product_id,
-            "type": "cart_item",
-            "quantity": int(quantity),
-        }
-    }
-    post_api_request(url, data)
+    add_product_to_cart(cart_id, quantity, product_id)
 
 
 def handle_cart(update, context):
-    cart_id = os.environ.get('CART_ID')
-    url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
-
-    response = get_api_request_json(url)
-
-    if response.status_code == 200:
-        cart_items = response.json()['data']
-    else:
-        cart_items = []
+    cart_items, total = get_cart_items_and_total_sum()
 
     message = ''
     for cart_item in cart_items:
@@ -205,7 +120,7 @@ def handle_cart(update, context):
 
 """
 
-    message += f"Total: {response.json()['meta']['display_price']['without_tax']['formatted']}"
+    message += f"Total: {total}"
 
     keyboard = [
         [InlineKeyboardButton(f'Remove from the cart the {cart_item["name"]}',
@@ -225,8 +140,7 @@ def handle_cart(update, context):
 def handle_remove_product_from_cart(update, context):
     cart_id = os.environ.get('CART_ID')
     rm_indicator, cart_item_id = update.callback_query.data.split("::")
-    url = f'https://useast.api.elasticpath.com/v2/carts/{cart_id}/items/{cart_item_id}'
-    remove_product_request(url)
+    remove_product(cart_id, cart_item_id)
     handle_cart(update, context)
 
 
@@ -235,18 +149,8 @@ def handle_payment(update, context):
 
 
 def payment_message(update, context):
-    url = 'https://useast.api.elasticpath.com/v2/customers'
     user_email = update.message.text
-    data = {
-        'data':
-            {
-                "type": "customer",
-                "name": "First user",
-                "email": user_email
-            }
-    }
-
-    post_api_request(url, data)
+    push_customer_data(user_email)
 
     message = f"Your email is: {user_email}"
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
