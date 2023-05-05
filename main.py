@@ -89,13 +89,8 @@ def handle_add_product_to_cart(update, context):
     else:
         cart_id = create_cart(user_id)
         r.set(f"cart:{user_id}", cart_id)
-        with open('.env', 'r') as file:
-            lines = file.readlines()
-        with open('.env', 'w') as file:
-            for line in lines:
-                if line.startswith('CART_ID='):
-                    line = f'CART_ID={cart_id}\n'
-                file.write(line)
+
+    context.bot_data['cart_id'] = cart_id
 
     quantity, product_id = update.callback_query.data.split('::')
     add_product_to_cart(cart_id, quantity, product_id)
@@ -134,7 +129,7 @@ def handle_cart(update, context):
 
 
 def handle_remove_product_from_cart(update, context):
-    cart_id = os.environ.get('CART_ID')
+    cart_id = context.bot_data['cart_id']
     rm_indicator, cart_item_id = update.callback_query.data.split("::")
     remove_product(cart_id, cart_item_id)
     handle_cart(update, context)
