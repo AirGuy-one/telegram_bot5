@@ -21,10 +21,8 @@ DATABASE_HOST=redisdatabasehost
 DATABASE_PORT=12345
 TELEGRAM_TOKEN=thisistelegramtoken
 PRICE_BOOK_ID=thisispricebookid
-CART_ID=thisiscartid
 CLIENT_ID=thisisclientid
 CLIENT_SECRET=thisisclientsecret
-BEARER=f9b5246b1cc858e83d60a69fcc8fee88e5c82f41
 ```
 
 ### Usage

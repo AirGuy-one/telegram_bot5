@@ -2,20 +2,20 @@ import requests
 import os
 
 
-def get_products():
+def get_products(bearer):
     url = 'https://useast.api.elasticpath.com/pcm/products'
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Authorization': f'Bearer {bearer}',
     }
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()['data']
 
 
-def get_products_with_images():
+def get_products_with_images(bearer):
     url = 'https://useast.api.elasticpath.com/pcm/products'
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Authorization': f'Bearer {bearer}',
     }
     params = {
         'include': 'main_image'
@@ -25,21 +25,21 @@ def get_products_with_images():
     return response.json()['data'], response.json()['included']
 
 
-def get_prices():
+def get_prices(bearer):
     price_book_id = os.environ.get('PRICE_BOOK_ID')
     url = f'https://useast.api.elasticpath.com/pcm/pricebooks/{price_book_id}/prices'
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Authorization': f'Bearer {bearer}',
     }
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()['data']
 
 
-def get_product_quantity_on_stock(product_id):
+def get_product_quantity_on_stock(product_id, bearer):
     url = 'https://useast.api.elasticpath.com/v2/inventories/multiple'
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Authorization': f'Bearer {bearer}',
         'Content-Type': 'application/json'
     }
     data = {
@@ -54,21 +54,21 @@ def get_product_quantity_on_stock(product_id):
     return response.json()['data'].pop()['available']
 
 
-def get_cart_items_and_total_sum():
+def get_cart_items_and_total_sum(bearer):
     cart_id = os.environ.get('CART_ID')
     url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Authorization': f'Bearer {bearer}',
     }
     response = requests.get(url, headers=headers)
     response.raise_for_status()
     return response.json()['data'], response.json()['meta']['display_price']['without_tax']['formatted']
 
 
-def create_cart(user_id):
+def create_cart(user_id, bearer):
     url = "https://useast.api.elasticpath.com/v2/carts"
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Authorization': f'Bearer {bearer}',
         'Content-Type': 'application/json'
     }
     json = {
@@ -85,10 +85,10 @@ def create_cart(user_id):
     return response.json()['data']['id'].decode('utf-8')
 
 
-def add_product_to_cart(cart_id, quantity, product_id):
+def add_product_to_cart(cart_id, quantity, product_id, bearer):
     url = f"https://useast.api.elasticpath.com/v2/carts/{cart_id}/items"
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Authorization': f'Bearer {bearer}',
         'Content-Type': 'application/json'
     }
     data = {
@@ -103,10 +103,10 @@ def add_product_to_cart(cart_id, quantity, product_id):
     response.raise_for_status()
 
 
-def push_customer_data(user_email):
+def push_customer_data(user_email, bearer):
     url = 'https://useast.api.elasticpath.com/v2/customers'
     headers = {
-            'Authorization': f'Bearer {os.environ.get("BEARER")}',
+            'Authorization': f'Bearer {bearer}',
             'Content-Type': 'application/json'
     }
     json = {
@@ -121,9 +121,9 @@ def push_customer_data(user_email):
     response.raise_for_status()
 
 
-def remove_product(cart_id, cart_item_id):
+def remove_product(cart_id, cart_item_id, bearer):
     url = f'https://useast.api.elasticpath.com/v2/carts/{cart_id}/items/{cart_item_id}'
     headers = {
-        'Authorization': f'Bearer {os.environ.get("BEARER")}',
+        'Authorization': f'Bearer {bearer}',
     }
     requests.delete(url, headers=headers)

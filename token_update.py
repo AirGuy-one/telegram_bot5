@@ -20,11 +20,4 @@ def get_access_token():
     response = requests.post(url, headers=headers, data=data)
     access_token = response.json()["access_token"]
 
-    with open('.env', 'r') as file:
-        lines = file.readlines()
-
-    with open('.env', 'w') as file:
-        for line in lines:
-            if line.startswith('BEARER='):
-                line = f'BEARER={access_token}\n'
-            file.write(line)
+    return access_token

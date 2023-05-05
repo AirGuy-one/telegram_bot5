@@ -17,7 +17,8 @@ from api_requests import get_products, get_products_with_images, get_prices, get
 def start(update, context):
     keyboard = [
         [InlineKeyboardButton(product['attributes']['name'],
-                              callback_data=str(index)) for index, product in enumerate(get_products())
+                              callback_data=str(index)) for index, product in
+         enumerate(get_products(context.bot_data['access_token']))
          ],
         [InlineKeyboardButton('Cart', callback_data='cart')],
     ]
@@ -29,15 +30,15 @@ def start(update, context):
 
 
 def handle_menu(update, context):
-    products, images = get_products_with_images()
-    prices = get_prices()
+    products, images = get_products_with_images(context.bot_data['access_token'])
+    prices = get_prices(context.bot_data['access_token'])
 
     product_index = int(update.callback_query.data)
 
     product = products[product_index]
     price = str(prices[product_index]['attributes']['currencies']['USD']['amount'])
 
-    quantity_on_stock = get_product_quantity_on_stock(product['id'])
+    quantity_on_stock = get_product_quantity_on_stock(product['id'], context.bot_data['access_token'])
 
     image_href = images['main_images'][product_index]['link']['href']
 
@@ -88,17 +89,17 @@ def handle_add_product_to_cart(update, context):
     if r.exists(f"cart:{user_id}"):
         cart_id = r.get(f"cart:{user_id}").decode('utf-8')
     else:
-        cart_id = create_cart(user_id)
+        cart_id = create_cart(user_id, context.bot_data['access_token'])
         r.set(f"cart:{user_id}", cart_id)
 
     context.bot_data['cart_id'] = cart_id
 
     quantity, product_id = update.callback_query.data.split('::')
-    add_product_to_cart(cart_id, quantity, product_id)
+    add_product_to_cart(cart_id, quantity, product_id, context.bot_data['access_token'])
 
 
 def handle_cart(update, context):
-    cart_items, total = get_cart_items_and_total_sum()
+    cart_items, total = get_cart_items_and_total_sum(context.bot_data['access_token'])
 
     message = ''
     for cart_item in cart_items:
@@ -133,7 +134,7 @@ def handle_cart(update, context):
 def handle_remove_product_from_cart(update, context):
     cart_id = context.bot_data['cart_id']
     rm_indicator, cart_item_id = update.callback_query.data.split("::")
-    remove_product(cart_id, cart_item_id)
+    remove_product(cart_id, cart_item_id, context.bot_data['access_token'])
     handle_cart(update, context)
 
 
@@ -143,7 +144,7 @@ def handle_payment(update, context):
 
 def payment_message(update, context):
     user_email = update.message.text
-    push_customer_data(user_email)
+    push_customer_data(user_email, context.bot_data['access_token'])
 
     message = f"Your email is: {user_email}"
     context.bot.send_message(chat_id=update.effective_chat.id, text=message)
@@ -174,7 +175,14 @@ def main():
 
     updater.start_polling()
 
-    schedule.every(60).minutes.do(get_access_token)
+    access_token = get_access_token()
+    dispatcher.bot_data['access_token'] = access_token
+
+    def update_access_token():
+        nonlocal access_token
+        access_token = get_access_token()
+
+    schedule.every(1).minutes.do(update_access_token)
 
     while True:
         schedule.run_pending()
