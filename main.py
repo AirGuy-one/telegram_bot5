@@ -79,13 +79,9 @@ def handle_back(update, context):
 
 
 def handle_add_product_to_cart(update, context):
+    r = context.bot_data['r']
+
     user_id = update.effective_user.id
-    r = redis.Redis(
-        host=os.environ.get('DATABASE_HOST'),
-        port=int(os.environ.get('DATABASE_PORT')),
-        password=os.environ.get('DATABASE_PASSWORD'),
-        db=0
-    )
 
     # Binding telegram_id to the cart_id in redis
     if r.exists(f"cart:{user_id}"):
@@ -157,9 +153,18 @@ def payment_message(update, context):
 
 
 def main():
+    r = redis.Redis(
+        host=os.environ.get('DATABASE_HOST'),
+        port=int(os.environ.get('DATABASE_PORT')),
+        password=os.environ.get('DATABASE_PASSWORD'),
+        db=0
+    )
+
     token = os.environ.get("TELEGRAM_TOKEN")
     updater = Updater(token)
     dispatcher = updater.dispatcher
+
+    dispatcher.bot_data['r'] = r
 
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CallbackQueryHandler(handle_back, pattern='back'))
