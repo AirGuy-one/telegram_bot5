@@ -182,7 +182,7 @@ def main():
         nonlocal access_token
         access_token = get_access_token()
 
-    schedule.every(1).minutes.do(update_access_token)
+    schedule.every(60).minutes.do(update_access_token)
 
     while True:
         schedule.run_pending()
