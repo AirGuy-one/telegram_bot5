@@ -4,6 +4,7 @@ import urllib.error
 import schedule
 import time
 import redis
+import textwrap
 
 from token_update import get_access_token
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -104,12 +105,13 @@ def handle_cart(update, context):
         price = cart_item['meta']['display_price']['without_tax']['unit']
         amount = cart_item['meta']['display_price']['without_tax']['value']
         kg_quantity = int(amount['amount'] / price['amount'])
-        message += f"""{cart_item['name']}
-{cart_item['description']}
-{price['formatted']} per kg
-{kg_quantity}kg in cart for {amount['formatted']}
+        message += textwrap.dedent(f"""
+            {cart_item['name']}
+            {cart_item['description']}
+            {price['formatted']} per kg
+            {kg_quantity}kg in cart for {amount['formatted']}
 
-"""
+        """)
 
     message += f"Total: {total}"
 
