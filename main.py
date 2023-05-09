@@ -151,6 +151,8 @@ def payment_message(update, context):
 
 
 def main():
+    load_dotenv()
+
     r = redis.Redis(
         host=os.environ.get('DATABASE_HOST'),
         port=int(os.environ.get('DATABASE_PORT')),
@@ -190,5 +192,4 @@ def main():
 
 
 if __name__ == '__main__':
-    load_dotenv()
     main()
