@@ -177,14 +177,18 @@ def main():
 
     updater.start_polling()
 
-    access_token = get_access_token()
-    dispatcher.bot_data['access_token'] = access_token
+    class AccessToken:
+        def __init__(self):
+            self.token = get_access_token()
 
-    def update_access_token():
-        nonlocal access_token
-        access_token = get_access_token()
+        def update(self):
+            self.token = get_access_token()
 
-    schedule.every(60).minutes.do(update_access_token)
+    access_token = AccessToken()
+
+    dispatcher.bot_data['access_token'] = access_token.token
+
+    schedule.every(60).minutes.do(access_token.update)
 
     while True:
         schedule.run_pending()
