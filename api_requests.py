@@ -73,7 +73,7 @@ def create_cart(user_id, bearer):
         'Authorization': f'Bearer {bearer}',
         'Content-Type': 'application/json'
     }
-    json = {
+    cart_data = {
         "data": {
             "name": f"Cart of user with {user_id} id",
             "description": "For Holidays",
@@ -82,7 +82,7 @@ def create_cart(user_id, bearer):
             }
         }
     }
-    response = requests.post(url, headers=headers, json=json)
+    response = requests.post(url, headers=headers, json=cart_data)
     response.raise_for_status()
     return response.json()['data']['id'].decode('utf-8')
 
@@ -111,7 +111,7 @@ def push_customer_data(user_email, bearer):
             'Authorization': f'Bearer {bearer}',
             'Content-Type': 'application/json'
     }
-    json = {
+    customer_data = {
         'data':
             {
                 "type": "customer",
@@ -119,7 +119,7 @@ def push_customer_data(user_email, bearer):
                 "email": user_email
             }
     }
-    response = requests.post(url, headers=headers, json=json)
+    response = requests.post(url, headers=headers, json=customer_data)
     response.raise_for_status()
 
 
