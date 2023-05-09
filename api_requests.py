@@ -22,7 +22,8 @@ def get_products_with_images(bearer):
     }
     response = requests.get(url, headers=headers, params=params)
     response.raise_for_status()
-    return response.json()['data'], response.json()['included']
+    json_response = response.json()
+    return json_response['data'], json_response['included']
 
 
 def get_prices(bearer):
@@ -62,7 +63,8 @@ def get_cart_items_and_total_sum(bearer):
     }
     response = requests.get(url, headers=headers)
     response.raise_for_status()
-    return response.json()['data'], response.json()['meta']['display_price']['without_tax']['formatted']
+    json_response = response.json()
+    return json_response['data'], json_response['meta']['display_price']['without_tax']['formatted']
 
 
 def create_cart(user_id, bearer):
