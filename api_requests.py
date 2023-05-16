@@ -128,4 +128,5 @@ def remove_product(cart_id, cart_item_id, bearer):
     headers = {
         'Authorization': f'Bearer {bearer}',
     }
-    requests.delete(url, headers=headers)
+    response = requests.delete(url, headers=headers)
+    response.raise_for_status()
