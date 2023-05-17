@@ -1,8 +1,6 @@
 import os
 import urllib.request
 import urllib.error
-import schedule
-import time
 import redis
 import textwrap
 
@@ -12,6 +10,11 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 from dotenv import load_dotenv
 from api_requests import get_products, get_products_with_images, get_prices, get_product_quantity_on_stock, \
     get_cart_items_and_total_sum, create_cart, add_product_to_cart, push_customer_data, remove_product
+
+
+def change_token(context):
+    context.bot_data['access_token'] = get_access_token()
+    context.bot.send_message(context.job.context, text=f"{context.bot_data['access_token']} token has changed!")
 
 
 def start(update, context):
@@ -27,6 +30,9 @@ def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Please select a product:",
                              reply_markup=reply_markup)
+
+    if hasattr(update.message, 'chat_id'):
+        context.job_queue.run_repeating(change_token, 60 * 60, context=update.message.chat_id)
 
 
 def handle_menu(update, context):
@@ -160,8 +166,8 @@ def main():
         db=0
     )
 
-    token = os.environ.get("TELEGRAM_TOKEN")
-    updater = Updater(token)
+    initial_token = os.environ.get("TELEGRAM_TOKEN")
+    updater = Updater(initial_token, use_context=True)
     dispatcher = updater.dispatcher
 
     dispatcher.bot_data['r'] = r
@@ -175,24 +181,10 @@ def main():
     dispatcher.add_handler(CallbackQueryHandler(handle_menu))
     dispatcher.add_handler(MessageHandler(Filters.text, payment_message))
 
+    dispatcher.bot_data['access_token'] = get_access_token()
+
     updater.start_polling()
-
-    class AccessToken:
-        def __init__(self):
-            self.token = get_access_token()
-
-        def update(self):
-            self.token = get_access_token()
-
-    access_token = AccessToken()
-
-    dispatcher.bot_data['access_token'] = access_token.token
-
-    schedule.every(60).minutes.do(access_token.update)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    updater.idle()
 
 
 if __name__ == '__main__':
