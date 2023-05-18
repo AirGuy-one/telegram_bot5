@@ -14,10 +14,13 @@ from api_requests import get_products, get_products_with_images, get_prices, get
 
 def change_token(context):
     context.bot_data['access_token'] = get_access_token()
-    context.bot.send_message(context.job.context, text=f"{context.bot_data['access_token']} token has changed!")
 
 
 def start(update, context):
+    if not context.bot_data.get('token_task_created'):
+        context.job_queue.run_repeating(change_token, 60 * 60)
+        context.bot_data['token_task_created'] = True
+
     keyboard = [
         [InlineKeyboardButton(product['attributes']['name'],
                               callback_data=str(index)) for index, product in
@@ -30,9 +33,6 @@ def start(update, context):
     context.bot.send_message(chat_id=update.effective_chat.id,
                              text="Please select a product:",
                              reply_markup=reply_markup)
-
-    if hasattr(update.message, 'chat_id'):
-        context.job_queue.run_repeating(change_token, 60 * 60, context=update.message.chat_id)
 
 
 def handle_menu(update, context):
